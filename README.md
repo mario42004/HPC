@@ -22,13 +22,13 @@ Open the Jupyter URL printed in the log, then run:
 train_unet_kvasir.ipynb
 ```
 
-The notebook is offline-only. It uses `data/kvasir-seg.zip` if it is present, extracts it into `data/`, and also accepts an already extracted dataset under `data/` with `images/` and `masks/` folders. Place the dataset zip at:
+The notebook is offline-only. It reads `data/kvasir-seg.zip` directly without extracting it, which avoids creating directories on compute nodes. It also accepts an already extracted dataset under `data/` with `images/` and `masks/` folders if that was prepared before launching Jupyter. Place the dataset zip at:
 
 ```text
 data/kvasir-seg.zip
 ```
 
-Then rerun the notebook cell that extracts the dataset.
+Then rerun the notebook dataset cell.
 
 ## MN5 Jupyter guide
 
@@ -194,7 +194,7 @@ If dataset setup fails with:
 NotADirectoryError: [Errno 20] Not a directory: 'data'
 ```
 
-there is a file called `data` where the notebook expects a folder. Rename that file to `kvasir-seg.zip`, create the folder `data/`, and move the zip there:
+there is a file called `data` where the notebook expects either a folder or a valid zip archive. Rename that file to `kvasir-seg.zip`. If you are on a login node or another writable location, create `data/` and move the zip there:
 
 ```bash
 mv data kvasir-seg.zip
