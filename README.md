@@ -188,6 +188,20 @@ IOStream.flush timed out
 
 the notebook is usually producing output faster than the Jupyter server can flush it. The training notebook avoids per-batch progress bars for this reason and prints only one summary line per epoch. If the message appears after editing the notebook, clear large cell outputs, restart the kernel, and rerun from the top.
 
+If dataset setup fails with:
+
+```text
+NotADirectoryError: [Errno 20] Not a directory: 'data'
+```
+
+there is a file called `data` where the notebook expects a folder. Rename that file to `kvasir-seg.zip`, create the folder `data/`, and move the zip there:
+
+```bash
+mv data kvasir-seg.zip
+mkdir -p data
+mv kvasir-seg.zip data/kvasir-seg.zip
+```
+
 ### 8. Stop the session
 
 When the training is finished, stop the notebook from the Jupyter interface or cancel the Slurm job:
