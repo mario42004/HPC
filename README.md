@@ -7,6 +7,8 @@ The Slurm script reserves one node with two GPUs so the notebook can demonstrate
 - single-GPU training by setting `requested_gpus = 1`
 - two-GPU training by setting `requested_gpus = 2`
 
+The notebook uses `SEED = 999`, suppresses non-actionable warnings, handles common dataset/training errors with clear messages, reports Dice and IoU, and finishes with a challenge to implement one more segmentation metric.
+
 ## Start Jupyter on MN5
 
 ```bash
@@ -140,7 +142,7 @@ tail -f jupyter_<jobid>.log
 To open a shell inside the running allocation:
 
 ```bash
-srun --jobid=<jobid> --pty bash
+srun --overlap --jobid=<jobid> --pty bash
 ```
 
 From that shell, check GPU usage:
@@ -162,7 +164,31 @@ Check whether the port is listening:
 ss -tulnp | grep 8888
 ```
 
-### 7. Stop the session
+### 7. Troubleshooting the notebook
+
+If a notebook cell prints an error such as:
+
+```text
+AssertionError: can only test a child process
+```
+
+restart the Jupyter kernel and rerun the notebook from the top. The training notebook sets:
+
+```python
+num_workers = 0
+```
+
+This avoids multiprocessing `DataLoader` workers, which are the usual cause of that error when cells are rerun in Jupyter.
+
+If the Jupyter log repeatedly prints:
+
+```text
+IOStream.flush timed out
+```
+
+the notebook is usually producing output faster than the Jupyter server can flush it. The training notebook avoids per-batch progress bars for this reason and prints only one summary line per epoch. If the message appears after editing the notebook, clear large cell outputs, restart the kernel, and rerun from the top.
+
+### 8. Stop the session
 
 When the training is finished, stop the notebook from the Jupyter interface or cancel the Slurm job:
 
