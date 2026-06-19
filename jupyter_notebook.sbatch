@@ -5,7 +5,7 @@
 #SBATCH -n 1
 #SBATCH -c 40
 #SBATCH --gres=gpu:2
-#SBATCH -t 02:00:00
+#SBATCH -t 01:00:00
 #SBATCH --job-name=unet_kvasir_jupyter
 #SBATCH --output=jupyter_%j.log
 
