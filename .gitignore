@@ -1,0 +1,7 @@
+data/
+checkpoints/
+*.log
+jupyter_*.log
+.ipynb_checkpoints/
+__pycache__/
+*.pyc
