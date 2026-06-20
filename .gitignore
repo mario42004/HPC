@@ -1,0 +1,17 @@
+data/*
+!data/
+!data/kvasir-seg.zip
+logs/
+outputs/
+!outputs/
+!outputs/.gitkeep
+!outputs/splits/
+!outputs/splits/.gitkeep
+!outputs/checkpoints/
+!outputs/checkpoints/.gitkeep
+!outputs/predictions/
+!outputs/predictions/.gitkeep
+*.log
+.ipynb_checkpoints/
+__pycache__/
+*.pyc
