@@ -28,7 +28,7 @@ python scripts/train.py \
   --history outputs/checkpoints/history.json \
   --image-size 256 \
   --batch-size 8 \
-  --epochs 5 \
+  --epochs 30 \
   --learning-rate 0.001 \
   --num-workers 4 \
   --gpus 2
