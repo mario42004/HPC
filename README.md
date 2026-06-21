@@ -52,6 +52,8 @@ cd HPC
 
 All paths in this guide are relative to the cloned `HPC/` directory. The batch scripts also compute the project path dynamically, so the repository can live anywhere under your home directory.
 
+Do not replace the commands with absolute user-specific paths. After cloning, use `cd HPC` and keep the rest of the commands relative to that directory.
+
 You can submit jobs from the project root:
 
 ```bash
