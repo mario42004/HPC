@@ -119,7 +119,7 @@ Both Slurm scripts also set:
 export PYTHONPATH="${PROJECT_ROOT}/src:${PYTHONPATH:-}"
 ```
 
-This allows Python to import the local `mn5_segmentation` package. The Slurm scripts compute `PROJECT_ROOT` from the location of the `.sbatch` file, so they can be submitted either from the project root or from inside the `sbatch/` folder.
+This allows Python to import the local `mn5_segmentation` package. The Slurm scripts compute `PROJECT_ROOT` from `SLURM_SUBMIT_DIR`: if the job is submitted from `sbatch/`, they use the parent directory; otherwise they use the submit directory itself. Submit jobs either from the project root or from inside the `sbatch/` folder.
 
 ## 4. Prepare the Dataset
 
@@ -190,11 +190,10 @@ squeue -u $USER
 To inspect the split log:
 
 ```bash
-ls logs/
-tail -f logs/split_<jobid>.log
+tail -f split_<jobid>.log
 ```
 
-Replace `<jobid>` with the Slurm job id printed by `sbatch`.
+Replace `<jobid>` with the Slurm job id printed by `sbatch`. Slurm writes this log in the directory where you submit the job.
 
 ## 6. Train the Model
 
@@ -245,7 +244,7 @@ squeue -u $USER
 To follow the training log:
 
 ```bash
-tail -f logs/train_<jobid>.log
+tail -f train_<jobid>.log
 ```
 
 The log prints training and validation metrics for every epoch:
@@ -438,7 +437,7 @@ If the checkpoint is missing during inference, confirm that training finished su
 
 ```bash
 ls -lh outputs/checkpoints/
-tail -n 50 logs/train_<jobid>.log
+tail -n 50 train_<jobid>.log
 ```
 
 ## Recommended Workflow
@@ -453,7 +452,7 @@ module load anaconda
 sbatch sbatch/split_dataset.sbatch
 squeue -u $USER
 sbatch sbatch/train.sbatch
-tail -f logs/train_<jobid>.log
+tail -f train_<jobid>.log
 ```
 
 Then use `notebooks/inference.ipynb` or `scripts/inference.py` to test the trained model.

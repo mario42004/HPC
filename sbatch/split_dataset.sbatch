@@ -6,12 +6,22 @@
 #SBATCH -c 4
 #SBATCH -t 00:10:00
 #SBATCH --job-name=kvasir_split
-#SBATCH --output=logs/split_%j.log
+#SBATCH --output=split_%j.log
 
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+SUBMIT_DIR="${SLURM_SUBMIT_DIR:-$PWD}"
+if [ "$(basename "${SUBMIT_DIR}")" = "sbatch" ]; then
+  PROJECT_ROOT="$(cd "${SUBMIT_DIR}/.." && pwd)"
+else
+  PROJECT_ROOT="$(cd "${SUBMIT_DIR}" && pwd)"
+fi
+
+if [ ! -d "${PROJECT_ROOT}/scripts" ]; then
+  echo "Could not locate project root from SLURM_SUBMIT_DIR=${SUBMIT_DIR}" >&2
+  echo "Submit from the project root or from the sbatch/ directory." >&2
+  exit 1
+fi
 
 cd "${PROJECT_ROOT}"
 mkdir -p logs outputs/splits
