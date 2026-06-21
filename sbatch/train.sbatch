@@ -26,6 +26,14 @@ fi
 
 cd "${PROJECT_ROOT}"
 mkdir -p logs outputs/checkpoints
+exec > >(tee -a "logs/train_${SLURM_JOB_ID:-manual}.log") 2>&1
+
+echo "Job ID: ${SLURM_JOB_ID:-manual}"
+echo "Submit dir: ${SUBMIT_DIR}"
+echo "Project root: ${PROJECT_ROOT}"
+echo "Working dir: $(pwd)"
+echo "Started at: $(date)"
+echo "CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-not set}"
 
 module load anaconda 2>/dev/null || true
 if [ -d "$HOME/BSC_jobs" ]; then
@@ -33,6 +41,8 @@ if [ -d "$HOME/BSC_jobs" ]; then
 fi
 
 export PYTHONPATH="${PROJECT_ROOT}/src:${PYTHONPATH:-}"
+echo "Python: $(command -v python)"
+python --version
 
 python scripts/train.py \
   --data-root data \
@@ -45,3 +55,5 @@ python scripts/train.py \
   --learning-rate 0.001 \
   --num-workers 4 \
   --gpus 2
+
+echo "Finished at: $(date)"

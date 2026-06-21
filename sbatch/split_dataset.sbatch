@@ -25,6 +25,13 @@ fi
 
 cd "${PROJECT_ROOT}"
 mkdir -p logs outputs/splits
+exec > >(tee -a "logs/split_${SLURM_JOB_ID:-manual}.log") 2>&1
+
+echo "Job ID: ${SLURM_JOB_ID:-manual}"
+echo "Submit dir: ${SUBMIT_DIR}"
+echo "Project root: ${PROJECT_ROOT}"
+echo "Working dir: $(pwd)"
+echo "Started at: $(date)"
 
 module load anaconda 2>/dev/null || true
 if [ -d "$HOME/BSC_jobs" ]; then
@@ -32,8 +39,12 @@ if [ -d "$HOME/BSC_jobs" ]; then
 fi
 
 export PYTHONPATH="${PROJECT_ROOT}/src:${PYTHONPATH:-}"
+echo "Python: $(command -v python)"
+python --version
 
 python scripts/split_dataset.py \
   --data-root data \
   --output outputs/splits/kvasir_split.json \
   --seed 999
+
+echo "Finished at: $(date)"

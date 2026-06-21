@@ -156,13 +156,15 @@ data/Kvasir-SEG/masks/
 Submit the split job from the project root:
 
 ```bash
-sbatch sbatch/split_dataset.sbatch
+SPLIT_JOBID=$(sbatch --parsable sbatch/split_dataset.sbatch)
+echo "Split job id: ${SPLIT_JOBID}"
 ```
 
 Or, if you are already inside the `sbatch/` folder:
 
 ```bash
-sbatch split_dataset.sbatch
+SPLIT_JOBID=$(sbatch --parsable split_dataset.sbatch)
+echo "Split job id: ${SPLIT_JOBID}"
 ```
 
 This creates:
@@ -184,29 +186,31 @@ The split is reproducible because it uses a fixed seed, currently `999`.
 To monitor the job:
 
 ```bash
-squeue -u $USER
+squeue -j "${SPLIT_JOBID}"
 ```
 
 To inspect the split log:
 
 ```bash
-tail -f split_<jobid>.log
+tail -f logs/split_${SPLIT_JOBID}.log
 ```
 
-Replace `<jobid>` with the Slurm job id printed by `sbatch`. Slurm writes this log in the directory where you submit the job.
+The batch script mirrors its output into `logs/` after it resolves the project root. If you submitted from inside `sbatch/`, run the `tail` command from the project root or use `../logs/split_${SPLIT_JOBID}.log`.
 
 ## 6. Train the Model
 
 After the split file exists, launch training:
 
 ```bash
-sbatch sbatch/train.sbatch
+TRAIN_JOBID=$(sbatch --parsable sbatch/train.sbatch)
+echo "Training job id: ${TRAIN_JOBID}"
 ```
 
 Or, from inside the `sbatch/` folder:
 
 ```bash
-sbatch train.sbatch
+TRAIN_JOBID=$(sbatch --parsable train.sbatch)
+echo "Training job id: ${TRAIN_JOBID}"
 ```
 
 The training job requests:
@@ -230,7 +234,7 @@ The training script uses:
 ```text
 image size: 256
 batch size: 8
-epochs: 5
+epochs: 30
 learning rate: 0.001
 GPUs: 2 when available
 ```
@@ -238,13 +242,13 @@ GPUs: 2 when available
 To monitor the training job:
 
 ```bash
-squeue -u $USER
+squeue -j "${TRAIN_JOBID}"
 ```
 
 To follow the training log:
 
 ```bash
-tail -f train_<jobid>.log
+tail -f logs/train_${TRAIN_JOBID}.log
 ```
 
 The log prints training and validation metrics for every epoch:
@@ -369,6 +373,18 @@ If the dataset is only available as `data/kvasir-seg.zip`, the notebook extracts
 
 ## 11. Useful Slurm Commands
 
+Use the job id captured by `sbatch --parsable`. For example:
+
+```bash
+JOBID="${SPLIT_JOBID}"
+```
+
+or:
+
+```bash
+JOBID="${TRAIN_JOBID}"
+```
+
 Show your jobs:
 
 ```bash
@@ -378,13 +394,19 @@ squeue -u $USER
 Show details for one job:
 
 ```bash
-scontrol show job <jobid>
+scontrol show job "${JOBID}"
+```
+
+Check a job that already finished or failed:
+
+```bash
+sacct -j "${JOBID}" --format=JobID,JobName,State,ExitCode,Elapsed
 ```
 
 Cancel one job:
 
 ```bash
-scancel <jobid>
+scancel "${JOBID}"
 ```
 
 Cancel all your jobs carefully:
@@ -437,7 +459,7 @@ If the checkpoint is missing during inference, confirm that training finished su
 
 ```bash
 ls -lh outputs/checkpoints/
-tail -n 50 train_<jobid>.log
+tail -n 50 logs/train_${TRAIN_JOBID}.log
 ```
 
 ## Recommended Workflow
@@ -449,10 +471,11 @@ ssh <your-bsc-user>@glogin3.bsc.es
 cd /path/to/MN5
 module avail 2>&1 | grep -i anaconda
 module load anaconda
-sbatch sbatch/split_dataset.sbatch
-squeue -u $USER
-sbatch sbatch/train.sbatch
-tail -f train_<jobid>.log
+SPLIT_JOBID=$(sbatch --parsable sbatch/split_dataset.sbatch)
+squeue -j "${SPLIT_JOBID}"
+# Wait until the split job finishes successfully before launching training.
+TRAIN_JOBID=$(sbatch --parsable sbatch/train.sbatch)
+tail -f logs/train_${TRAIN_JOBID}.log
 ```
 
 Then use `notebooks/inference.ipynb` or `scripts/inference.py` to test the trained model.
