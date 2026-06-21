@@ -3,7 +3,7 @@
 #SBATCH -q acc_interactive
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH -c 8
+#SBATCH -c 20
 #SBATCH --gres=gpu:1
 #SBATCH -t 01:00:00
 #SBATCH --job-name=kvasir_inference_jupyter
