@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -A bsc114
-#SBATCH -q acc_debug
+#SBATCH -q acc_interactive
 #SBATCH -N 1
 #SBATCH -n 1
 #SBATCH -c 8
