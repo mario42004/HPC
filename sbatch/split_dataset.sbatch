@@ -10,7 +10,10 @@
 
 set -euo pipefail
 
-cd "${SLURM_SUBMIT_DIR}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
+cd "${PROJECT_ROOT}"
 mkdir -p logs outputs/splits
 
 module load anaconda 2>/dev/null || true
@@ -18,10 +21,9 @@ if [ -d "$HOME/BSC_jobs" ]; then
   source "$HOME/BSC_jobs/bin/activate"
 fi
 
-export PYTHONPATH="${SLURM_SUBMIT_DIR}/src:${PYTHONPATH:-}"
+export PYTHONPATH="${PROJECT_ROOT}/src:${PYTHONPATH:-}"
 
 python scripts/split_dataset.py \
   --data-root data \
   --output outputs/splits/kvasir_split.json \
   --seed 999
-

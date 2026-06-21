@@ -116,10 +116,10 @@ The main requirements are PyTorch, torchvision, NumPy, Pillow, Matplotlib, tqdm,
 Both Slurm scripts also set:
 
 ```bash
-export PYTHONPATH="${SLURM_SUBMIT_DIR}/src:${PYTHONPATH:-}"
+export PYTHONPATH="${PROJECT_ROOT}/src:${PYTHONPATH:-}"
 ```
 
-This allows Python to import the local `mn5_segmentation` package when the job runs from the project root.
+This allows Python to import the local `mn5_segmentation` package. The Slurm scripts compute `PROJECT_ROOT` from the location of the `.sbatch` file, so they can be submitted either from the project root or from inside the `sbatch/` folder.
 
 ## 4. Prepare the Dataset
 
@@ -159,6 +159,12 @@ Submit the split job from the project root:
 sbatch sbatch/split_dataset.sbatch
 ```
 
+Or, if you are already inside the `sbatch/` folder:
+
+```bash
+sbatch split_dataset.sbatch
+```
+
 This creates:
 
 ```text
@@ -196,6 +202,12 @@ After the split file exists, launch training:
 
 ```bash
 sbatch sbatch/train.sbatch
+```
+
+Or, from inside the `sbatch/` folder:
+
+```bash
+sbatch train.sbatch
 ```
 
 The training job requests:
