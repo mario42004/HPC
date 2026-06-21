@@ -1,14 +1,16 @@
-# U-Net Kvasir-SEG Training Guide on MN5
+# MN5 Kvasir-SEG Training and Inference Guide
 
-This project trains a U-Net model for binary polyp segmentation with the Kvasir-SEG dataset. The workflow is intentionally split into three clean stages:
+This repository contains a clean U-Net workflow for binary polyp segmentation with the Kvasir-SEG dataset on MN5/HPC.
 
-1. Dataset splitting with a Slurm batch job.
-2. Model training with a separate Slurm batch job.
-3. Inference from a Python script or a Jupyter notebook.
+The workflow is:
 
-The training code is reusable Python code, while the MN5-specific execution details live in the `sbatch/` folder.
+1. Connect to the HPC login node.
+2. Launch the dataset split job.
+3. Launch the training job.
+4. Launch a Jupyter inference job.
+5. Open the inference notebook through an SSH tunnel on port `8888`.
 
-## Project Structure
+## Project Layout
 
 ```text
 .
@@ -21,159 +23,115 @@ The training code is reusable Python code, while the MN5-specific execution deta
 │   ├── predictions/
 │   └── splits/
 ├── sbatch/
+│   ├── inference_jupyter.sbatch
 │   ├── split_dataset.sbatch
 │   └── train.sbatch
 ├── scripts/
 │   ├── inference.py
 │   ├── split_dataset.py
 │   └── train.py
-├── src/
-│   └── mn5_segmentation/
-│       ├── data.py
-│       ├── metrics.py
-│       ├── model.py
-│       └── utils.py
-├── requirements.txt
-└── README.md
+└── src/
+    └── mn5_segmentation/
 ```
 
-## What Each File Does
+## 1. Connect to the HPC
 
-- `scripts/split_dataset.py`: scans the dataset and creates reproducible train/validation/test splits.
-- `scripts/train.py`: trains the U-Net model using the split file.
-- `scripts/inference.py`: loads a trained checkpoint and generates segmentation masks.
-- `notebooks/inference.ipynb`: interactive notebook for visual inference.
-- `sbatch/split_dataset.sbatch`: Slurm job for dataset splitting.
-- `sbatch/train.sbatch`: Slurm job for training.
-- `src/mn5_segmentation/`: shared dataset, model, metric, and utility code.
-
-## 1. Connect to MN5
-
-From your local machine, connect to the MN5 login node with SSH:
+From your local machine, connect to the login node. This guide uses `alogin1` as the example login node:
 
 ```bash
-ssh <your-bsc-user>@glogin3.bsc.es
+ssh <your-bsc-user>@alogin1.bsc.es
 ```
 
-If your course, account, or allocation uses another login host, replace `glogin3.bsc.es` with the host provided by BSC.
-
-Once connected, move to the project folder:
+Move to the project folder:
 
 ```bash
-cd /path/to/MN5
+cd /gpfs/home/bsc/bsc210126/HPC
 ```
 
-For this workspace, the project path is:
+You can submit jobs from the project root:
 
 ```bash
-cd /home/mariojojoaacosta/Documents/BSC/projects/MN5
+sbatch sbatch/split_dataset.sbatch
 ```
+
+or from inside the `sbatch/` folder:
+
+```bash
+cd sbatch
+sbatch split_dataset.sbatch
+```
+
+Both modes are supported.
 
 ## 2. Check the Anaconda Module
 
-Before launching the scripts, check which Anaconda modules are available on MN5:
+Before launching jobs, check which Anaconda modules are available:
 
 ```bash
 module avail 2>&1 | grep -i anaconda
 ```
 
-Then load the appropriate module. For example:
-
-```bash
-module load anaconda
-```
-
-The provided Slurm scripts already try to load Anaconda automatically:
+The batch scripts try to load Anaconda automatically:
 
 ```bash
 module load anaconda 2>/dev/null || true
 ```
 
-This means the jobs will continue even if the exact module name differs. If MN5 shows a versioned module such as `anaconda/2023.07`, update the `module load` line inside the two files under `sbatch/`.
+If your HPC shows a versioned module, edit the `module load` line in the files under `sbatch/`.
 
-## 3. Python Environment
+## 3. Dataset
 
-If you already have a working Python environment, activate it before testing scripts manually:
-
-```bash
-source /path/to/your/environment/bin/activate
-```
-
-The Slurm scripts also try to activate this optional environment if it exists:
-
-```bash
-source "$HOME/BSC_jobs/bin/activate"
-```
-
-Install the required Python packages if needed:
-
-```bash
-pip install -r requirements.txt
-```
-
-The main requirements are PyTorch, torchvision, NumPy, Pillow, Matplotlib, tqdm, and JupyterLab.
-
-Both Slurm scripts also set:
-
-```bash
-export PYTHONPATH="${PROJECT_ROOT}/src:${PYTHONPATH:-}"
-```
-
-This allows Python to import the local `mn5_segmentation` package. The Slurm scripts compute `PROJECT_ROOT` from `SLURM_SUBMIT_DIR`: if the job is submitted from `sbatch/`, they use the parent directory; otherwise they use the submit directory itself. Submit jobs either from the project root or from inside the `sbatch/` folder.
-
-## 4. Prepare the Dataset
-
-Place the Kvasir-SEG zip archive here:
+The dataset should be available as:
 
 ```text
 data/kvasir-seg.zip
 ```
 
-The code can read the dataset directly from the zip file, so extraction is not required.
+The project reads this zip file directly. You do not need to extract it.
 
-Alternatively, you may use an extracted dataset folder under `data/`, as long as it contains:
+The split script creates a JSON file with train/validation/test image IDs. It does not copy or extract images.
 
-```text
-images/
-masks/
-```
+## 4. Launch the Dataset Split
 
-Example accepted layouts:
-
-```text
-data/kvasir-seg.zip
-```
-
-or:
-
-```text
-data/Kvasir-SEG/images/
-data/Kvasir-SEG/masks/
-```
-
-## 5. Create the Dataset Split
-
-Submit the split job from the project root:
+From the project root:
 
 ```bash
 SPLIT_JOBID=$(sbatch --parsable sbatch/split_dataset.sbatch)
 echo "Split job id: ${SPLIT_JOBID}"
 ```
 
-Or, if you are already inside the `sbatch/` folder:
+From inside `sbatch/`:
 
 ```bash
 SPLIT_JOBID=$(sbatch --parsable split_dataset.sbatch)
 echo "Split job id: ${SPLIT_JOBID}"
 ```
 
-This creates:
+Monitor the job:
+
+```bash
+squeue -j "${SPLIT_JOBID}"
+```
+
+Check the log from the project root:
+
+```bash
+tail -f logs/split_${SPLIT_JOBID}.log
+```
+
+If you are inside `sbatch/`, use:
+
+```bash
+tail -f ../logs/split_${SPLIT_JOBID}.log
+```
+
+Expected output:
 
 ```text
 outputs/splits/kvasir_split.json
 ```
 
-By default, the split is:
+The split contains:
 
 ```text
 80% train
@@ -181,179 +139,122 @@ By default, the split is:
 10% test
 ```
 
-The split is reproducible because it uses a fixed seed, currently `999`.
+## 5. Launch Training
 
-To monitor the job:
+After the split job finishes successfully, launch training.
 
-```bash
-squeue -j "${SPLIT_JOBID}"
-```
-
-To inspect the split log:
-
-```bash
-tail -f logs/split_${SPLIT_JOBID}.log
-```
-
-The batch script mirrors its output into `logs/` after it resolves the project root. If you submitted from inside `sbatch/`, run the `tail` command from the project root or use `../logs/split_${SPLIT_JOBID}.log`.
-
-## 6. Train the Model
-
-After the split file exists, launch training:
+From the project root:
 
 ```bash
 TRAIN_JOBID=$(sbatch --parsable sbatch/train.sbatch)
 echo "Training job id: ${TRAIN_JOBID}"
 ```
 
-Or, from inside the `sbatch/` folder:
+From inside `sbatch/`:
 
 ```bash
 TRAIN_JOBID=$(sbatch --parsable train.sbatch)
 echo "Training job id: ${TRAIN_JOBID}"
 ```
 
-The training job requests:
-
-```text
-1 node
-1 task
-40 CPU cores
-2 GPUs
-1 hour
-```
-
-These settings are defined in:
-
-```text
-sbatch/train.sbatch
-```
-
-The training script uses:
-
-```text
-image size: 256
-batch size: 8
-epochs: 30
-learning rate: 0.001
-GPUs: 2 when available
-```
-
-To monitor the training job:
+Monitor the job:
 
 ```bash
 squeue -j "${TRAIN_JOBID}"
 ```
 
-To follow the training log:
+Follow the log from the project root:
 
 ```bash
 tail -f logs/train_${TRAIN_JOBID}.log
 ```
 
-The log prints training and validation metrics for every epoch:
+If you are inside `sbatch/`, use:
 
-```text
-train loss
-train Dice
-train IoU
-validation loss
-validation Dice
-validation IoU
+```bash
+tail -f ../logs/train_${TRAIN_JOBID}.log
 ```
 
-## 7. Training Outputs
+Training settings are defined in `sbatch/train.sbatch`:
 
-The trained model checkpoint is saved here:
+```text
+queue: acc_debug
+GPUs: 2
+CPU cores: 40
+epochs: 30
+batch size: 8
+image size: 256
+learning rate: 0.001
+```
+
+Training outputs:
 
 ```text
 outputs/checkpoints/unet_kvasir.pt
-```
-
-The training history is saved here:
-
-```text
 outputs/checkpoints/history.json
 ```
 
-The checkpoint contains:
+The checkpoint is required by the inference notebook.
 
-- model weights
-- training arguments
-- epoch history
-- elapsed training time
+## 6. Launch the Jupyter Inference Job
 
-If you run training multiple times, the default checkpoint path will be overwritten. To keep multiple runs, change the `--checkpoint` argument in `sbatch/train.sbatch`, for example:
+After training finishes and the checkpoint exists, start Jupyter for inference.
 
-```bash
---checkpoint outputs/checkpoints/unet_kvasir_${SLURM_JOB_ID}.pt
-```
-
-## 8. Run Scripts Manually for Debugging
-
-For quick debugging on an interactive node or local environment, set `PYTHONPATH` and run the scripts directly.
-
-Create a split:
+From the project root:
 
 ```bash
-PYTHONPATH=src python scripts/split_dataset.py \
-  --data-root data \
-  --output outputs/splits/kvasir_split.json \
-  --seed 999
+JUPYTER_JOBID=$(sbatch --parsable sbatch/inference_jupyter.sbatch)
+echo "Jupyter job id: ${JUPYTER_JOBID}"
 ```
 
-Train:
+From inside `sbatch/`:
 
 ```bash
-PYTHONPATH=src python scripts/train.py \
-  --data-root data \
-  --split-file outputs/splits/kvasir_split.json \
-  --checkpoint outputs/checkpoints/unet_kvasir.pt \
-  --history outputs/checkpoints/history.json \
-  --image-size 256 \
-  --batch-size 8 \
-  --epochs 5 \
-  --learning-rate 0.001 \
-  --num-workers 4 \
-  --gpus 2
+JUPYTER_JOBID=$(sbatch --parsable inference_jupyter.sbatch)
+echo "Jupyter job id: ${JUPYTER_JOBID}"
 ```
 
-For manual training tests without GPUs, use:
+Follow the Jupyter log from the project root:
 
 ```bash
---gpus 1
+tail -f logs/jupyter_${JUPYTER_JOBID}.log
 ```
 
-The script will fall back to CPU if CUDA is not available, but CPU training is only recommended for debugging.
-
-## 9. Inference from Python
-
-After training, run inference on a single image:
+If you are inside `sbatch/`, use:
 
 ```bash
-PYTHONPATH=src python scripts/inference.py \
-  --checkpoint outputs/checkpoints/unet_kvasir.pt \
-  --image path/to/image.jpg \
-  --output outputs/predictions/prediction.png
+tail -f ../logs/jupyter_${JUPYTER_JOBID}.log
 ```
 
-The predicted binary mask is saved to:
+The log prints:
+
+- the compute node running Jupyter
+- the port, by default `8888`
+- the SSH tunnel command
+- the Jupyter URL with token
+
+## 7. Create the SSH Tunnel for Jupyter
+
+Keep the Jupyter job running. In a new terminal on your local machine, create the tunnel.
+
+The Jupyter log will print a command like this:
+
+```bash
+ssh -L 8888:<compute-node>:8888 <your-bsc-user>@alogin1.bsc.es
+```
+
+Replace:
+
+- `<compute-node>` with the compute node printed in `logs/jupyter_${JUPYTER_JOBID}.log`
+- `<your-bsc-user>` with your BSC username
+
+Keep this tunnel terminal open.
+
+Then open the Jupyter URL printed in the log in your local browser. It will look similar to:
 
 ```text
-outputs/predictions/prediction.png
+http://127.0.0.1:8888/lab?token=<token>
 ```
-
-You can also import the inference functions:
-
-```python
-from scripts.inference import load_model, predict_mask, save_prediction
-
-model, device = load_model("outputs/checkpoints/unet_kvasir.pt")
-probability, mask = predict_mask(model, "path/to/image.jpg", device)
-save_prediction(mask, "outputs/predictions/prediction.png")
-```
-
-## 10. Inference from Jupyter
 
 Open:
 
@@ -361,40 +262,28 @@ Open:
 notebooks/inference.ipynb
 ```
 
-The notebook:
+## 8. Inference Notebook Exercises
 
-1. Adds `src/` and `scripts/` to the Python path.
-2. Loads `outputs/checkpoints/unet_kvasir.pt`.
-3. Selects an example image.
-4. Generates a probability map and binary mask.
-5. Saves the prediction under `outputs/predictions/`.
+The inference notebook asks a few easy questions:
 
-If the dataset is only available as `data/kvasir-seg.zip`, the notebook extracts one sample image into `outputs/predictions/` for convenience.
+1. Visualize GPU usage during inference with `nvidia-smi`.
+2. Check whether PyTorch is using `cuda` or `cpu`.
+3. Measure inference time for one image.
+4. Change the probability threshold and observe the mask.
+5. Propose one extra inference measurement, such as average latency, GPU memory before/after inference, number of foreground pixels, or CPU vs GPU timing.
 
-## 11. Useful Slurm Commands
+The notebook saves predictions under:
 
-Use the job id captured by `sbatch --parsable`. For example:
-
-```bash
-JOBID="${SPLIT_JOBID}"
+```text
+outputs/predictions/
 ```
 
-or:
+## 9. Useful Slurm Commands
+
+Show a running job:
 
 ```bash
-JOBID="${TRAIN_JOBID}"
-```
-
-Show your jobs:
-
-```bash
-squeue -u $USER
-```
-
-Show details for one job:
-
-```bash
-scontrol show job "${JOBID}"
+squeue -j "${JOBID}"
 ```
 
 Check a job that already finished or failed:
@@ -403,79 +292,53 @@ Check a job that already finished or failed:
 sacct -j "${JOBID}" --format=JobID,JobName,State,ExitCode,Elapsed
 ```
 
-Cancel one job:
+Cancel a job:
 
 ```bash
 scancel "${JOBID}"
 ```
 
-Cancel all your jobs carefully:
+For example:
 
 ```bash
-scancel -u $USER
+JOBID="${TRAIN_JOBID}"
+sacct -j "${JOBID}" --format=JobID,JobName,State,ExitCode,Elapsed
 ```
 
-Check GPU usage from inside an allocation:
+## 10. Recommended Full Run
+
+From your local machine:
 
 ```bash
-nvidia-smi
-watch -n 2 nvidia-smi
+ssh <your-bsc-user>@alogin1.bsc.es
 ```
 
-## 12. Troubleshooting
-
-If `sbatch` fails because the Anaconda module is not found, check available modules:
+On the HPC:
 
 ```bash
+cd /gpfs/home/bsc/bsc210126/HPC
 module avail 2>&1 | grep -i anaconda
-```
 
-Then edit the module line in:
-
-```text
-sbatch/split_dataset.sbatch
-sbatch/train.sbatch
-```
-
-If Python cannot import `mn5_segmentation`, make sure `PYTHONPATH` includes `src`:
-
-```bash
-export PYTHONPATH="$PWD/src:${PYTHONPATH:-}"
-```
-
-If the split script cannot find the dataset, check that the zip exists:
-
-```bash
-ls -lh data/kvasir-seg.zip
-```
-
-If CUDA runs out of memory, reduce the batch size in `sbatch/train.sbatch`:
-
-```bash
---batch-size 4
-```
-
-If the checkpoint is missing during inference, confirm that training finished successfully:
-
-```bash
-ls -lh outputs/checkpoints/
-tail -n 50 logs/train_${TRAIN_JOBID}.log
-```
-
-## Recommended Workflow
-
-Use this sequence for a clean run:
-
-```bash
-ssh <your-bsc-user>@glogin3.bsc.es
-cd /path/to/MN5
-module avail 2>&1 | grep -i anaconda
-module load anaconda
 SPLIT_JOBID=$(sbatch --parsable sbatch/split_dataset.sbatch)
-squeue -j "${SPLIT_JOBID}"
-# Wait until the split job finishes successfully before launching training.
+tail -f logs/split_${SPLIT_JOBID}.log
+
+# Wait until the split job finishes successfully.
 TRAIN_JOBID=$(sbatch --parsable sbatch/train.sbatch)
 tail -f logs/train_${TRAIN_JOBID}.log
+
+# Wait until training finishes and the checkpoint exists.
+JUPYTER_JOBID=$(sbatch --parsable sbatch/inference_jupyter.sbatch)
+tail -f logs/jupyter_${JUPYTER_JOBID}.log
 ```
 
-Then use `notebooks/inference.ipynb` or `scripts/inference.py` to test the trained model.
+From a second local terminal, create the SSH tunnel using the compute node printed in the Jupyter log:
+
+```bash
+ssh -L 8888:<compute-node>:8888 <your-bsc-user>@alogin1.bsc.es
+```
+
+Then open the Jupyter URL printed in the log and run:
+
+```text
+notebooks/inference.ipynb
+```
