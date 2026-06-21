@@ -5,10 +5,11 @@ This repository contains a clean U-Net workflow for binary polyp segmentation wi
 The workflow is:
 
 1. Connect to the HPC login node.
-2. Launch the dataset split job.
-3. Launch the training job.
-4. Launch a Jupyter inference job.
-5. Open the inference notebook through an SSH tunnel on port `8888`.
+2. Clone the public repository into your home directory.
+3. Launch the dataset split job.
+4. Launch the training job.
+5. Launch a Jupyter inference job.
+6. Open the inference notebook through an SSH tunnel on port `8888`.
 
 ## Project Layout
 
@@ -34,19 +35,22 @@ The workflow is:
     └── mn5_segmentation/
 ```
 
-## 1. Connect to the HPC
+## 1. Connect to the HPC and Clone the Repository
 
-From your local machine, connect to the login node. This guide uses `alogin1` as the example login node:
-
-```bash
-ssh <your-bsc-user>@alogin1.bsc.es
-```
-
-Move to the project folder:
+From your local machine, connect to the login node. This guide uses `alogin4`:
 
 ```bash
-cd /gpfs/home/bsc/bsc210126/HPC
+ssh <your-bsc-user>@alogin4.bsc.es
 ```
+
+Clone the public repository with HTTPS:
+
+```bash
+git clone https://github.com/mario42004/HPC.git
+cd HPC
+```
+
+All paths in this guide are relative to the cloned `HPC/` directory. The batch scripts also compute the project path dynamically, so the repository can live anywhere under your home directory.
 
 You can submit jobs from the project root:
 
@@ -240,7 +244,7 @@ Keep the Jupyter job running. In a new terminal on your local machine, create th
 The Jupyter log will print a command like this:
 
 ```bash
-ssh -L 8888:<compute-node>:8888 <your-bsc-user>@alogin1.bsc.es
+ssh -L 8888:<compute-node>:8888 <your-bsc-user>@alogin4.bsc.es
 ```
 
 Replace:
@@ -310,13 +314,14 @@ sacct -j "${JOBID}" --format=JobID,JobName,State,ExitCode,Elapsed
 From your local machine:
 
 ```bash
-ssh <your-bsc-user>@alogin1.bsc.es
+ssh <your-bsc-user>@alogin4.bsc.es
 ```
 
 On the HPC:
 
 ```bash
-cd /gpfs/home/bsc/bsc210126/HPC
+git clone https://github.com/mario42004/HPC.git
+cd HPC
 module avail 2>&1 | grep -i anaconda
 
 SPLIT_JOBID=$(sbatch --parsable sbatch/split_dataset.sbatch)
@@ -334,7 +339,7 @@ tail -f logs/jupyter_${JUPYTER_JOBID}.log
 From a second local terminal, create the SSH tunnel using the compute node printed in the Jupyter log:
 
 ```bash
-ssh -L 8888:<compute-node>:8888 <your-bsc-user>@alogin1.bsc.es
+ssh -L 8888:<compute-node>:8888 <your-bsc-user>@alogin4.bsc.es
 ```
 
 Then open the Jupyter URL printed in the log and run:

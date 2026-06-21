@@ -41,7 +41,7 @@ echo "Port: ${PORT}"
 echo "CUDA_VISIBLE_DEVICES: ${CUDA_VISIBLE_DEVICES:-not set}"
 echo
 echo "From your local machine, create the SSH tunnel with:"
-echo "ssh -L ${PORT}:${NODE}:${PORT} <your-bsc-user>@alogin1.bsc.es"
+echo "ssh -L ${PORT}:${NODE}:${PORT} <your-bsc-user>@alogin4.bsc.es"
 echo
 echo "Then open the Jupyter URL printed below in your local browser."
 echo
